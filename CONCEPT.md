@@ -78,8 +78,60 @@ This allows developers to run `python data_generation.py` in their favorite IDE 
 By using **Pandas and SQLAlchemy's `to_sql` with `chunksize`**, the platform can generate millions of rows without crashing the system memory.
 
 ---
+## 6. Data Architecture (Medallion Model)
 
-## 4. Analytical Use Cases
+The platform follows a Medallion Architecture to structure data processing:
+
+- **Bronze Layer (Raw Data)**  
+  Raw ingestion of data from MySQL and APIs without transformations.
+
+- **Silver Layer (Cleaned Data)**  
+  Data is cleaned, deduplicated, null-handled, and standardized.
+
+- **Gold Layer (Business Layer)**  
+  Fact and dimension tables are created for analytics:
+  - Fact Tables: payments, activities
+  - Dimension Tables: users, campaigns, counselors
+
+This layered approach ensures data quality, scalability, and analytical flexibility.
+
+## 7. Data Pipeline Flow
+
+MySQL / API Sources  
+        ↓  
+Bronze Layer (Raw Storage - Parquet/JSON)  
+        ↓  
+Silver Layer (Cleaning + Validation)  
+        ↓  
+Gold Layer (Fact & Dimension Modeling)  
+        ↓  
+Analytics / Dashboarding  
+
+The pipeline supports incremental data loading and can be orchestrated using Airflow.
+
+## 8. Slowly Changing Dimensions (SCD Type 2)
+
+To track historical changes, dimension tables such as users and counselors are modeled using SCD Type 2:
+
+- New records are inserted when attributes change
+- Historical versions are preserved with:
+  - effective_start_date
+  - effective_end_date
+  - is_active flag
+
+This enables time-based analysis such as:
+- "What was the user's assigned counselor at the time of payment?"
+## 9. Incremental Data Processing
+
+Instead of reprocessing full datasets, the pipeline supports incremental loading:
+
+- Data is extracted based on timestamps (e.g., updated_at)
+- Only new or updated records are processed
+- Reduces compute cost and improves performance
+
+This mimics real-world production pipelines.
+
+## 10. Analytical Use Cases
 This dataset is perfect for practicing:
 1. **Marketing Attribution**: Which platform (Google vs Facebook) gives the highest LTV?
 2. **Sales Funnel Analysis**: What is the average time from *CONTACTED* to *WON*?
