@@ -21,5 +21,28 @@ dist/
 *.sqlite
 *.db
 
+# Data Lake / Storage
+storage/
+*.parquet
+*.csv
+*.json
+
+# Logs
+*.log
+logs/
+
+# Airflow
+airflow/logs/
+airflow/airflow.db
+airflow/*.pid
+
+# Notebooks
+.ipynb_checkpoints/
+
 # OS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Docker
+*.tar
