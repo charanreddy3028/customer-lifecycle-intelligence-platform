@@ -1,0 +1,19 @@
+database:
+  host: localhost
+  port: 3333
+  user: root
+  password: password
+  name: edtech
+
+storage:
+  bronze_path: storage/bronze/
+  silver_path: storage/silver/
+  gold_path: storage/gold/
+
+pipeline:
+  batch_size: 1000
+  retry_count: 3
+  null_probability: 0.1
+
+logging:
+  level: INFO
