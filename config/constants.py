@@ -36,3 +36,21 @@ PLATFORMS = ["facebook", "google"]
 # -----------------------------
 DEFAULT_NULL_PROBABILITY = 0.1
 MAX_NULL_PROBABILITY = 0.3
+
+# -----------------------------
+# AWS Kinesis Configs
+# -----------------------------
+AWS_REGION = "ap-south-1"
+
+STREAMS = {
+    "payments": "payments-stream",
+    "campaigns": "campaigns-stream"
+}
+
+API_ENDPOINTS = {
+    "payments": "http://127.0.0.1:8000/payments",
+    "campaigns": "http://127.0.0.1:8000/campaigns"
+}
+
+S3_BUCKET = "customer-lifecycle-intelligence-platform-bronze-layer"
+S3_PREFIX = "bronze"
