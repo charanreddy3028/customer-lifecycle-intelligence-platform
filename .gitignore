@@ -46,3 +46,7 @@ airflow/*.pid
 
 # Docker
 *.tar
+
+# Configuration Files (Secrets)
+config/config.yaml
+config/constants.py

@@ -109,10 +109,12 @@ python -m data_generation.check_db
 | **Check status** | `docker-compose ps` |
 
 ### Data Generation & Verification (Local)
+We use a `Makefile` so you don't have to memorize long `PYTHONPATH` commands.
 | Task | Command |
 | :--- | :--- |
-| **Generate Data** | `export PYTHONPATH=$PYTHONPATH:. && python -m data_generation.data_generation` |
-| **Verify Counts** | `export PYTHONPATH=$PYTHONPATH:. && python -m data_generation.check_db` |
+| **Generate Data** | `make generate-data` |
+| **Verify Counts** | `make check-db` |
+| **Export to S3 (Bronze)** | `make export-s3` |
 
 ### Database Access
 | Task | Command |
