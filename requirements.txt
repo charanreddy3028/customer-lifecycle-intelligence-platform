@@ -12,3 +12,6 @@ loguru==0.7.2
 cryptography
 PyYAML==6.0.2
 boto3==1.34.110
+fastapi
+uvicorn
+pyspark

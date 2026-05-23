@@ -1,0 +1,141 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation Template for Bronze to Silver Layer Transformation'
+
+Parameters:
+  BronzeBucketName:
+    Type: String
+    Description: Name of the existing Bronze S3 bucket
+  SilverBucketName:
+    Type: String
+    Description: Name of the Silver S3 bucket to be created
+  GlueJobName:
+    Type: String
+    Description: Name of the AWS Glue job
+
+Resources:
+  # 1. Silver S3 Bucket
+  SilverBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref SilverBucketName
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # 2. IAM Role for AWS Glue
+  GlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - glue.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      Policies:
+        - PolicyName: S3DataLakeAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${BronzeBucketName}'
+                  - !Sub 'arn:aws:s3:::${BronzeBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${SilverBucketName}'
+                  - !Sub 'arn:aws:s3:::${SilverBucketName}/*'
+
+  # 3. AWS Glue Job (Cost-Optimized Specs)
+  BronzeToSilverGlueJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: !Ref GlueJobName
+      Role: !GetAtt GlueServiceRole.Arn
+      # Lowest possible specifications for Spark (G.1X with 2 workers)
+      WorkerType: G.1X
+      NumberOfWorkers: 2
+      GlueVersion: '4.0'
+      Command:
+        Name: glueetl
+        # The path to your transformation script (you must upload it to S3 first)
+        ScriptLocation: !Sub 's3://${SilverBucketName}/scripts/bronze_to_silver_transformation.py'
+        PythonVersion: '3'
+      DefaultArguments:
+        '--job-bookmark-option': 'job-bookmark-enable'
+        '--BRONZE_BUCKET': !Ref BronzeBucketName
+        '--SILVER_BUCKET': !Ref SilverBucketName
+        '--extra-py-files': !Sub 's3://${SilverBucketName}/scripts/rdbms_transformations.py'
+      ExecutionProperty:
+        MaxConcurrentRuns: 1
+
+  # 4. IAM Role for AWS Lambda
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: LambdaS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${BronzeBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${SilverBucketName}/*'
+
+  # 5. AWS Lambda Function for API Data
+  ApiDataTransformationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: transform-api-data-to-silver
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.9
+      Handler: transform_api_lambda.lambda_handler
+      Timeout: 60
+      MemorySize: 256
+      Environment:
+        Variables:
+          SILVER_BUCKET: !Ref SilverBucketName
+      # Assuming code is uploaded to S3 first
+      Code:
+        S3Bucket: !Ref SilverBucketName
+        S3Key: scripts/transform_api_lambda.zip
+      # AWS Data Wrangler (awswrangler) Layer for Pandas & Parquet
+      Layers:
+        # Example ARN for awswrangler in ap-south-1 (Python 3.9) - update if using different region
+        - arn:aws:lambda:ap-south-1:336392550081:layer:AWSSDKPandas-Python39:12
+
+Outputs:
+  SilverBucketNameOutput:
+    Description: Name of the created Silver S3 Bucket
+    Value: !Ref SilverBucket
+  GlueJobRoleOutput:
+    Description: IAM Role ARN for the Glue Job
+    Value: !GetAtt GlueServiceRole.Arn
+  LambdaFunctionNameOutput:
+    Description: Name of the Lambda Function for API data
+    Value: !Ref ApiDataTransformationLambda
