@@ -126,8 +126,8 @@ Resources:
         S3Key: scripts/transform_api_lambda.zip
       # AWS Data Wrangler (awswrangler) Layer for Pandas & Parquet
       Layers:
-        # Example ARN for awswrangler in ap-south-1 (Python 3.9) - update if using different region
-        - arn:aws:lambda:ap-south-1:336392550081:layer:AWSSDKPandas-Python39:12
+        # Correct official AWS SDK for pandas ARN in ap-south-1
+        - arn:aws:lambda:ap-south-1:336392948345:layer:AWSSDKPandas-Python39:25
 
 Outputs:
   SilverBucketNameOutput:
