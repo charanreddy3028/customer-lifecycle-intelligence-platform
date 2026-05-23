@@ -11,13 +11,12 @@ from datetime import datetime
 # Load environment variables (from .env file)
 load_dotenv()
 
-from config import constants
-
 # AWS Configuration
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", constants.AWS_ACCESS_KEY_ID)
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", constants.AWS_SECRET_ACCESS_KEY)
-AWS_REGION = os.getenv("AWS_REGION", constants.AWS_REGION)
-S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", constants.S3_BUCKET_NAME)
+# Add these variables to your .env file!
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION = os.getenv("AWS_REGION", "ap-south-1")
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "customer-lifecycle-intelligence-platform-bronze-layer")
 
 # Database Configuration 
 # Note: Using 127.0.0.1 (localhost) to connect from the Mac terminal to the Docker MySQL container

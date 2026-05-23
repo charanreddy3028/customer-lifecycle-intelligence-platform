@@ -48,5 +48,5 @@ airflow/*.pid
 *.tar
 
 # Configuration Files (Secrets)
-config/config.yaml
-config/constants.py
+# config/config.yaml
+# config/constants.py
