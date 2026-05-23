@@ -120,10 +120,12 @@ Resources:
       Environment:
         Variables:
           SILVER_BUCKET: !Ref SilverBucketName
-      # Assuming code is uploaded to S3 first
+      # Using dummy inline code to bypass CloudFormation Chicken-and-Egg problem.
+      # You will upload the real zip file via the Console later!
       Code:
-        S3Bucket: !Ref SilverBucketName
-        S3Key: scripts/transform_api_lambda.zip
+        ZipFile: |
+          def lambda_handler(event, context):
+              pass
       # AWS Data Wrangler (awswrangler) Layer for Pandas & Parquet
       Layers:
         # Correct official AWS SDK for pandas ARN in ap-south-1
