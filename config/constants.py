@@ -42,10 +42,7 @@ MAX_NULL_PROBABILITY = 0.3
 # -----------------------------
 AWS_REGION = "ap-south-1"
 
-STREAMS = {
-    "payments": "payments-stream",
-    "campaigns": "campaigns-stream"
-}
+
 
 API_ENDPOINTS = {
     "payments": "http://127.0.0.1:8000/payments",
