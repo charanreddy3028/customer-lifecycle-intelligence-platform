@@ -131,6 +131,74 @@ Resources:
         # Correct official AWS SDK for pandas ARN in ap-south-1
         - arn:aws:lambda:ap-south-1:336392948345:layer:AWSSDKPandas-Python39:25
 
+  # 6. IAM Role for Firehose to write to Bronze S3
+  FirehoseDeliveryRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: firehose.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FirehoseS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:AbortMultipartUpload
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:ListBucketMultipartUploads
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:aws:s3:::${BronzeBucketName}'
+                  - !Sub 'arn:aws:s3:::${BronzeBucketName}/*'
+
+  # 7. Firehose Stream for Payments (Micro-Batching to Bronze)
+  PaymentsFirehoseStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: 'payments-firehose-stream'
+      DeliveryStreamType: 'DirectPut'
+      ExtendedS3DestinationConfiguration:
+        RoleARN: !GetAtt FirehoseDeliveryRole.Arn
+        BucketARN: !Sub 'arn:aws:s3:::${BronzeBucketName}'
+        # Hive Partitioning format: year/month/date/hour
+        Prefix: 'bronze/payments/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/'
+        ErrorOutputPrefix: 'bronze_errors/payments/!{firehose:error-output-type}/'
+        BufferingHints:
+          SizeInMBs: 5
+          IntervalInSeconds: 60
+        CompressionFormat: 'UNCOMPRESSED'
+        FileExtension: '.json'
+        CloudWatchLoggingOptions:
+          Enabled: false
+
+  # 8. Firehose Stream for Campaigns (Micro-Batching to Bronze)
+  CampaignsFirehoseStream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: 'campaigns-firehose-stream'
+      DeliveryStreamType: 'DirectPut'
+      ExtendedS3DestinationConfiguration:
+        RoleARN: !GetAtt FirehoseDeliveryRole.Arn
+        BucketARN: !Sub 'arn:aws:s3:::${BronzeBucketName}'
+        # Hive Partitioning format: year/month/date/hour
+        Prefix: 'bronze/campaigns/year=!{timestamp:yyyy}/month=!{timestamp:MM}/day=!{timestamp:dd}/hour=!{timestamp:HH}/'
+        ErrorOutputPrefix: 'bronze_errors/campaigns/!{firehose:error-output-type}/'
+        BufferingHints:
+          SizeInMBs: 5
+          IntervalInSeconds: 60
+        CompressionFormat: 'UNCOMPRESSED'
+        FileExtension: '.json'
+        CloudWatchLoggingOptions:
+          Enabled: false
+
 Outputs:
   SilverBucketNameOutput:
     Description: Name of the created Silver S3 Bucket
@@ -141,3 +209,7 @@ Outputs:
   LambdaFunctionNameOutput:
     Description: Name of the Lambda Function for API data
     Value: !Ref ApiDataTransformationLambda
+  PaymentsFirehoseName:
+    Value: !Ref PaymentsFirehoseStream
+  CampaignsFirehoseName:
+    Value: !Ref CampaignsFirehoseStream
