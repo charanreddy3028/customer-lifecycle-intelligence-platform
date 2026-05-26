@@ -11,6 +11,8 @@ from awsglue.context import GlueContext
 from awsglue.job import Job
 # pyrefly: ignore [missing-import]
 from awsglue.dynamicframe import DynamicFrame
+# pyrefly: ignore [missing-import]
+from pyspark.sql.functions import input_file_name, regexp_extract
 from rdbms_transformations import TRANSFORMATION_MAP
 
 # 1. Initialization and Parameter parsing
@@ -31,9 +33,13 @@ entities = [
     "opportunities",
     "refunds",
     "sessions",
+    "calls",
+    "sessionattendance",
+    "lead_status_history",
     "counselors"
 ]
 
+has_error = False
 for entity in entities:
     print(f"Processing entity: {entity}")
     
@@ -58,11 +64,17 @@ for entity in entities:
             
         # 3. Merge with Existing Silver Data (for Incremental Upserts)
         df = dynamic_frame.toDF()
+        
+        # 🌟 Bulletproof Data Lineage: Extract run_id directly from the physical S3 file path!
+        df = df.withColumn("run_id", regexp_extract(input_file_name(), r"run_id=([^/]+)", 1))
+        
         spark = glueContext.spark_session
         try:
             existing_silver_df = spark.read.parquet(silver_path)
             print(f"Found existing Silver data for {entity}. Unioning for deduplication.")
             df = existing_silver_df.unionByName(df, allowMissingColumns=True)
+            # 🌟 Break lazy evaluation lineage to prevent "File not present on S3" error during overwrite!
+            df = df.localCheckpoint(eager=True)
         except Exception:
             print(f"No existing Silver data found for {entity}. Processing as first run.")
             
@@ -83,6 +95,12 @@ for entity in entities:
         
     except Exception as e:
         print(f"Error processing {entity}: {str(e)}")
+        has_error = True
 
-# Commit job bookmark to keep track of processed data
-job.commit()
+if has_error:
+    print("❌ One or more entities failed to process.")
+    raise Exception("Failing the Glue Job to prevent the bookmark from committing. This ensures no data is skipped on the next run!")
+else:
+    # Commit job bookmark to keep track of processed data ONLY if everything succeeded
+    print("✅ All entities processed successfully! Committing bookmark.")
+    job.commit()
