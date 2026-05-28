@@ -34,12 +34,12 @@ entities = [
     "refunds",
     "sessions",
     "calls",
-    "sessionattendance",
+    "session_attendance",
     "lead_status_history",
     "counselors"
 ]
 
-has_error = False
+failed_entities = []
 for entity in entities:
     print(f"Processing entity: {entity}")
     
@@ -94,12 +94,13 @@ for entity in entities:
         print(f"Successfully processed and wrote {entity} to Silver layer.")
         
     except Exception as e:
-        print(f"Error processing {entity}: {str(e)}")
-        has_error = True
+        import traceback
+        err_msg = f"\n❌ ERROR IN {entity.upper()} ❌\n{traceback.format_exc()}"
+        failed_entities.append(err_msg)
 
-if has_error:
-    print("❌ One or more entities failed to process.")
-    raise Exception("Failing the Glue Job to prevent the bookmark from committing. This ensures no data is skipped on the next run!")
+if failed_entities:
+    error_summary = "\n".join(failed_entities)
+    raise Exception(f"Failing the Glue Job to prevent bookmark commit. Underlyings failures:\n{error_summary}")
 else:
     # Commit job bookmark to keep track of processed data ONLY if everything succeeded
     print("✅ All entities processed successfully! Committing bookmark.")

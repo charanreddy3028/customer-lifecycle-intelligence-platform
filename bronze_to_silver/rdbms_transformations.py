@@ -1,7 +1,7 @@
 # pyrefly: ignore [missing-import]
 from pandas.core import window
 # pyrefly: ignore [missing-import]
-from pyspark.sql.functions import col, trim, lower, initcap, current_timestamp, from_utc_timestamp,row_number, lit, expr   
+from pyspark.sql.functions import col, trim, lower, initcap, current_timestamp, from_utc_timestamp,row_number, lit, expr, when   
 # pyrefly: ignore [missing-import]
 from pyspark.sql.window import Window 
 
@@ -86,7 +86,8 @@ def transform_refunds(df):
     
     # discrepancy flagging
     discrepancy_window = Window.partitionBy("payment_id").orderBy("refund_datetime")
-    df = df.withColumn("payment_id_discrepancy",expr("CASE WHEN row_number() over(discrepancy_window) >1 THEN 'YES' ELSE 'NO' END"))
+    df = df.withColumn("payment_id_discrepancy",
+                       when(row_number().over(discrepancy_window) > 1, "YES").otherwise("NO"))
 
     return df
 
@@ -157,8 +158,8 @@ def transform_lead_status_history(df):
     
     return df
 
-def transform_sessionattendance(df):
-    """Cleanse the sessionattendance table."""
+def transform_session_attendance(df):
+    """Cleanse the session_attendance table."""
     df = df.filter(col("attendance_id").isNotNull())
     if "joined_at" in df.columns:
         df = df.withColumn("joined_at",from_utc_timestamp(col("joined_at"),"Asia/Kolkata"))
@@ -169,7 +170,7 @@ def transform_sessionattendance(df):
 
     # Adding Metadata Columns
     df = df.withColumn("ingested_datetime", from_utc_timestamp(current_timestamp(),"Asia/Kolkata")) \
-            .withColumn("source",lit("mysql_sessionattendance")) \
+            .withColumn("source",lit("mysql_session_attendance")) \
             .withColumn("batch_id", col("run_id"))  
     
     return df
@@ -182,7 +183,7 @@ TRANSFORMATION_MAP = {
     "refunds": transform_refunds,
     "sessions": transform_sessions,
     "calls": transform_calls,
-    "sessionattendance": transform_sessionattendance,
+    "session_attendance": transform_session_attendance,
     "lead_status_history": transform_lead_status_history,
     "counselors": transform_counselors
 }
